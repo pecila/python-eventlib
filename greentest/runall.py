@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # Copyright (c) 2008-2009 AG Projects
 # Author: Denis Bilenko
@@ -57,8 +57,8 @@ def enum_hubs():
     for hub in hubs:
         try:
             use_hub(hub)
-        except Exception, ex:
-            print 'Skipping hub %s: %s' % (hub, ex)
+        except Exception as ex:
+            print('Skipping hub %s: %s' % (hub, ex))
         else:
             result.append(hub)
     return result
@@ -76,8 +76,8 @@ def enum_reactors():
     for reactor in all_reactors:
         try:
             import_reactor(reactor)
-        except Exception, ex:
-            print 'Skipping reactor %s: %s' % (reactor, ex)
+        except Exception as ex:
+            print('Skipping reactor %s: %s' % (reactor, ex))
         else:
             selected_reactors.append(reactor)
     return selected_reactors
@@ -140,9 +140,9 @@ def main():
     options.reactors.sort(key=first_reactors.__contains__, reverse=True)
     random.shuffle(options.tests)
 
-    print 'hubs: %s' % ','.join(options.hubs)
-    print 'reactors: %s' % ','.join(options.reactors)
-    print 'tests: %s' % ','.join(options.tests)
+    print('hubs: %s' % ','.join(options.hubs))
+    print('reactors: %s' % ','.join(options.reactors))
+    print('tests: %s' % ','.join(options.tests))
 
     if options.show:
        return

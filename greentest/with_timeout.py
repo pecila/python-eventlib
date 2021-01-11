@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # Copyright (c) 2008-2009 AG Projects
 # Author: Denis Bilenko
@@ -37,6 +37,7 @@ import sys
 import os
 import time
 import warnings
+import tempfile
 
 if sys.argv[1:2] and sys.argv[1]=='-t':
     del sys.argv[1]
@@ -53,9 +54,7 @@ except NameError:
 try:
     CURRENT_TEST_FILENAME
 except NameError:
-    warnings.filterwarnings('ignore', 'tmpnam is a potential security risk to your program')
-    CURRENT_TEST_FILENAME = os.tmpnam()
-    del warnings.filters[0]
+    CURRENT_TEST_FILENAME = tempfile.NamedTemporaryFile(delete=False).name
 
 class Alarm(Exception):
     pass
@@ -68,7 +67,7 @@ def _test():
     >>> system('./with_timeout.py -t 3 __init__.py')
     (0, 0)
 
-    >>> system('./with_timeout.py -t 3 /usr/lib/python2.5/BaseHTTPServer.py 0')
+    >>> system('./with_timeout.py -t 3 /usr/lib/python3.5/BaseHTTPServer.py 0')
     (7, 3)
 
     >>> system('./with_timeout.py -t 3 with_timeout.py --selftest1')
@@ -119,7 +118,7 @@ del sys.argv[0]
 def execf():
     #print 'in execf', disabled_tests
     def patch_unittest():
-        "print test name before it was run and write it pipe"
+        "print test name before it was run and write it to pipe"
         import unittest
         class TestCase(unittest.TestCase):
             base = unittest.TestCase
@@ -131,9 +130,10 @@ def execf():
                 name = "%s.%s" % (self.__class__.__name__, testMethodName)
                 if name in disabled_tests:
                     return
-                print name, ' '
+                print(name, ' ')
                 sys.stdout.flush()
-                file(CURRENT_TEST_FILENAME, 'w').write(name)
+                print(CURRENT_TEST_FILENAME)
+                open(CURRENT_TEST_FILENAME, "w").write(name)
                 try:
                     return self.base.run(self, result)
                 finally:
@@ -144,7 +144,7 @@ def execf():
                         pass
         unittest.TestCase = TestCase
     patch_unittest()
-    execfile(filename, globals())
+    exec(compile(open(filename).read(), filename, 'exec'), globals())
  
 while True:
     #print 'before fork, %s' % disabled_tests
@@ -154,9 +154,9 @@ while True:
         pass
     child = os.fork()
     if child == 0:
-        print '===PYTHON=%s.%s.%s' % sys.version_info[:3]
-        print '===ARGV=%s' % ' '.join(sys.argv)
-        print '===TIMEOUT=%r' % TIMEOUT
+        print('===PYTHON=%s.%s.%s' % sys.version_info[:3])
+        print('===ARGV=%s' % ' '.join(sys.argv))
+        print('===TIMEOUT=%r' % TIMEOUT)
         sys.stdout.flush()
         execf()
         break
@@ -174,20 +174,20 @@ while True:
                 os.kill(child, signal.SIGKILL)
             except Exception:
                 pass
-            print '\n===%s was killed after %s seconds' % (child, time.time()-start)
+            print('\n===%s was killed after %s seconds' % (child, time.time()-start))
             sys.stdout.flush() 
             bad_test = None
             try:
-                bad_test = file(CURRENT_TEST_FILENAME).read()
+                bad_test = open(CURRENT_TEST_FILENAME, "rb").read()
             except IOError:
                pass 
             if bad_test in disabled_tests:
-                print '\n===%s was disabled but it still managed to fail?!' % bad_test
+                print('\n===%s was disabled but it still managed to fail?!' % bad_test)
                 sys.stdout.flush()        
                 break
             if bad_test is None:
                 sys.exit(7)
-            print '\n===Trying again, now without %s' % bad_test
+            print('\n===Trying again, now without %s' % bad_test)
             sys.stdout.flush()
             disabled_tests.append(bad_test)
         except:
@@ -201,10 +201,10 @@ while True:
                 pass
             raise
         else:
-            print '===%s exited with code %s' % (pid, status)
+            print('===%s exited with code %s' % (pid, status))
             sys.stdout.flush()
             if disabled_tests:
-                print '\n===disabled because of timeout: %s\n%s\n' % (len(disabled_tests), '\n'.join(disabled_tests))
+                print('\n===disabled because of timeout: %s\n%s\n' % (len(disabled_tests), '\n'.join(disabled_tests)))
                 sys.stdout.flush()
             if disabled_tests:
                 if status:

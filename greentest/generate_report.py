@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # Copyright (c) 2008-2009 AG Projects
 # Author: Denis Bilenko
@@ -49,14 +49,14 @@ def calc_hub_stats(table):
         for hub in table[testname]:
             test_result = table[testname][hub]
             hub_stats.setdefault(hub, TestResult(0,0,0,0)).__iadd__(test_result)
-    hubs = hub_stats.items()
+    hubs = list(hub_stats.items())
     hub_names = sorted(hub_stats.keys())
     def get_order(hub):
         try:
             return hubs_order.index(hub)
         except ValueError:
             return 100 + hub_names.index(hub)
-    hubs.sort(key=lambda (hub, stats): get_order(hub))
+    hubs.sort(key=lambda hub_stats1: get_order(hub_stats1[0]))
     return hub_stats, [x[0] for x in hubs]
 
 class TestResult:
@@ -206,7 +206,7 @@ def generate_raw_results(path, database):
     c = sqlite3.connect(database)
     res = c.execute('select id, stdout from command_record').fetchall()
     for id, out in res:
-        file(os.path.join(path, '%s.txt' % id), 'w').write(out.encode('utf-8'))
+        open(os.path.join(path, '%s.txt' % id), 'w').write(out)
         sys.stderr.write('.')
     sys.stderr.write('\n')
 
@@ -219,16 +219,16 @@ def main(db):
     path = '../htmlreports/%s' % full_changeset
     try:
         os.makedirs(path)
-    except OSError, ex:
+    except OSError as ex:
         if 'File exists' not in str(ex):
             raise
-    file(path + '/index.html', 'w').write(report)
+    open(path + '/index.html', 'w').write(report)
     generate_raw_results(path, db)
 
 if __name__=='__main__':
     if not sys.argv[1:]:
         latest_db = sorted(glob.glob('results.*.db'), key=lambda f: os.stat(f).st_mtime)[-1]
-        print latest_db
+        print(latest_db)
         sys.argv.append(latest_db)
     for db in sys.argv[1:]:
         main(db)

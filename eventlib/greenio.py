@@ -42,33 +42,35 @@ def higher_order_recv(recv_func):
             chunk, self.recvbuffer = buf[:buflen], buf[buflen:]
             return chunk
         fd = self.fd
-        bytes = recv_func(fd, buflen)
+        _bytes = recv_func(fd, buflen)
         if self.gettimeout():
             end = time.time()+self.gettimeout()
         else:
             end = None
         timeout = None
-        while bytes is None:
+        while _bytes is None:
             try:
                 if end:
                     timeout = end - time.time()
                 trampoline(fd, read=True, timeout=timeout, timeout_exc=socket.timeout)
             except socket.timeout:
                 raise
-            except socket.error, e:
+            except socket.error as e:
                 if e[0] == errno.EPIPE:
-                    bytes = ''
+                    _bytes = b''
                 else:
                     raise
             else:
-                bytes = recv_func(fd, buflen)
-        self.recvcount += len(bytes)
-        return bytes
+                _bytes = recv_func(fd, buflen)
+        self.recvcount += len(_bytes)
+        return _bytes
     return recv
 
 
 def higher_order_send(send_func):
     def send(self, data):
+        if not isinstance(data, bytes):
+            data = data.encode()
         if self.act_non_blocking:
             return self.fd.send(data)
         count = send_func(self.fd, data)
@@ -102,17 +104,17 @@ else:
 def socket_accept(descriptor):
     try:
         return descriptor.accept()
-    except socket.error, e:
+    except socket.error as e:
         if e.args[0] in BLOCKING_ERR:
             return None
         raise
 
 
-def socket_send(descriptor, data):
+def socket_send(descriptor, data:bytes):
     try:
         return descriptor.send(data)
-    except socket.error, e:
-        if e.args[0] in BLOCKING_ERR + errno.ENOTCONN:
+    except socket.error as e:
+        if e.args[0] in BLOCKING_ERR + (errno.ENOTCONN, ):
             return 0
         raise
 
@@ -121,7 +123,7 @@ SOCKET_CLOSED = (errno.ECONNRESET, errno.ENOTCONN, errno.ESHUTDOWN)
 def socket_recv(descriptor, buflen):
     try:
         return descriptor.recv(buflen)
-    except socket.error, e:
+    except socket.error as e:
         if e.args[0] in BLOCKING_ERR:
             return None
         if e.args[0] in SOCKET_CLOSED:
@@ -132,11 +134,11 @@ def socket_recv(descriptor, buflen):
 def file_recv(fd, buflen):
     try:
         return fd.read(buflen)
-    except IOError, e:
+    except IOError as e:
         if e[0] == errno.EAGAIN:
             return None
         return ''
-    except socket.error, e:
+    except socket.error as e:
         if e[0] == errno.EPIPE:
             return ''
         raise
@@ -147,12 +149,12 @@ def file_send(fd, data):
         fd.write(data)
         fd.flush()
         return len(data)
-    except IOError, e:
+    except IOError as e:
         if e[0] == errno.EAGAIN:
             return 0
-    except ValueError, e:
+    except ValueError as e:
         written = 0
-    except socket.error, e:
+    except socket.error as e:
         if e[0] == errno.EPIPE:
             written = 0
 
@@ -175,7 +177,7 @@ class GreenSocket(object):
     is_secure = False
     timeout = None
     def __init__(self, family_or_realsock=socket.AF_INET, *args, **kwargs):
-        if isinstance(family_or_realsock, (int, long)):
+        if isinstance(family_or_realsock, int):
             fd = _original_socket(family_or_realsock, *args, **kwargs)
         else:
             fd = family_or_realsock
@@ -187,7 +189,7 @@ class GreenSocket(object):
         self._fileno = fd.fileno()
         self.sendcount = 0
         self.recvcount = 0
-        self.recvbuffer = ''
+        self.recvbuffer = b''
         self.closed = False
         self.timeout = socket.getdefaulttimeout()
 
@@ -222,6 +224,11 @@ class GreenSocket(object):
     def bind(self, *args, **kw):
         fn = self.bind = self.fd.bind
         return fn(*args, **kw)
+
+
+    def _decref_socketios(self):
+        if self.closed:
+                self.close()
 
     def close(self, *args, **kw):
         if self.closed:
@@ -266,7 +273,7 @@ class GreenSocket(object):
             while not socket_connect(fd, address):
                 try:
                     trampoline(fd, write=True, timeout_exc=socket.timeout)
-                except socket.error, ex:
+                except socket.error as ex:
                     return ex[0]
         else:
             end = time.time() + self.gettimeout()
@@ -277,7 +284,7 @@ class GreenSocket(object):
                     raise socket.timeout
                 try:
                     trampoline(fd, write=True, timeout=end-time.time(), timeout_exc=socket.timeout)
-                except socket.error, ex:
+                except socket.error as ex:
                     return ex[0]
 
     def dup(self, *args, **kw):
@@ -308,7 +315,7 @@ class GreenSocket(object):
         return fn(*args, **kw)
 
     def makefile(self, mode='r', bufsize=-1):
-        return socket._fileobject(self.dup(), mode, bufsize)
+        return socket.SocketIO(self.dup(), mode)
 
     def makeGreenFile(self, mode='r', bufsize=-1):
         return GreenFile(self.dup())
@@ -382,7 +389,7 @@ class GreenSocket(object):
         return self.timeout
 
 def read(self, size=None):
-    if size is not None and not isinstance(size, (int, long)):
+    if size is not None and not isinstance(size, int):
         raise TypeError('Expecting an int or long for size, got %s: %s' % (type(size), repr(size)))
     buf, self.sock.recvbuffer = self.sock.recvbuffer, ''
     lst = [buf]
@@ -407,7 +414,12 @@ def read(self, size=None):
                 lst[-1], self.sock.recvbuffer = d[:-overbite], d[-overbite:]
             else:
                 lst[-1], self.sock.recvbuffer = d, ''
-    return ''.join(lst)
+    if isinstance(lst[0], bytes):
+        stringlst = [x.decode('utf-8') for x in lst]
+        return ''.join(stringlst)
+    else:
+        return ''.join(lst)
+
 
 
 class GreenFile(object):
@@ -442,7 +454,7 @@ class GreenFile(object):
         checked = 0
         if size is None:
             while True:
-                found = buf.find(terminator, checked)
+                found = buf.find(terminator.encode(), checked)
                 if found != -1:
                     found += len(terminator)
                     chunk, self.sock.recvbuffer = buf[:found], buf[found:]
@@ -471,7 +483,7 @@ class GreenFile(object):
         return self.readuntil(self.newlines, size=size)
 
     def __iter__(self):
-        return self.xreadlines()
+        return self
 
     def readlines(self, size=None):
         return list(self.xreadlines(size=size))

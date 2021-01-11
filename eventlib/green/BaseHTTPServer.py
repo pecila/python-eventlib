@@ -2,10 +2,7 @@ import sys
 from eventlib.green import socket
 from eventlib.green import SocketServer
 
-__import_lst = ['DEFAULT_ERROR_MESSAGE', '_quote_html', '__version__', '__all__', 'BaseHTTPRequestHandler']
-__BaseHTTPServer = __import__('BaseHTTPServer')
-for var in __import_lst:
-    exec "%s = __BaseHTTPServer.%s" % (var, var)
+from http.server import( DEFAULT_ERROR_MESSAGE, __version__, __all__, BaseHTTPRequestHandler)
 
 
 class HTTPServer(SocketServer.TCPServer):
@@ -46,7 +43,7 @@ def test(HandlerClass = BaseHTTPRequestHandler,
     httpd = ServerClass(server_address, HandlerClass)
 
     sa = httpd.socket.getsockname()
-    print "Serving HTTP on", sa[0], "port", sa[1], "..."
+    print("Serving HTTP on", sa[0], "port", sa[1], "...")
     httpd.serve_forever()
 
 

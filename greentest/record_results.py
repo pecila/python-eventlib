@@ -1,4 +1,4 @@
-#!/usr/bin/python2
+#!/usr/bin/python3
 
 # Copyright (c) 2008-2009 AG Projects
 # Author: Denis Bilenko
@@ -28,6 +28,7 @@ Usage: %prog program [args]
 import sys
 import os
 import codecs
+import tempfile
 try:
     import sqlite3
 except ImportError:
@@ -49,7 +50,7 @@ def record(changeset, argv, stdout, returncode):
                stdout text,
                exitcode integer)''')
     c.execute('insert into command_record (command, stdout, exitcode)'
-              'values (?, ?, ?)', (`argv`, stdout, returncode))
+              'values (?, ?, ?)', (repr(argv), stdout, returncode))
     c.commit()
 
 def main():
@@ -60,12 +61,13 @@ def main():
     else:
         debug = False
     changeset = os.popen(COMMAND_CHANGESET).readlines()[0].replace('changeset:', '').strip().replace(':', '_')
-    output_name = os.tmpnam()
-    arg = ' '.join(argv) + ' &> %s' % output_name
-    print arg
+    output_fd = tempfile.NamedTemporaryFile(delete=False)
+    output_name = output_fd.name
+    arg = ' '.join(argv) + ' > %s' % output_name
     returncode = os.system(arg)>>8
-    print arg, 'finished with code', returncode
+    print(arg, 'finished with code', returncode)
     stdout = codecs.open(output_name, mode='r', encoding='utf-8', errors='replace').read().replace('\x00', '?')
+    print(">>>\n", stdout, "\n<<<\n")
     if not debug:
         if returncode==1:
             pass
@@ -73,7 +75,7 @@ def main():
             pass
         else:
             record(changeset, argv, stdout, returncode)
-            os.unlink(output_name)
+            #os.unlink(output_name)
     sys.exit(returncode)
 
 if __name__=='__main__':
