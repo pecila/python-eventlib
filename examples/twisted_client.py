@@ -15,7 +15,7 @@ print("\n\nRead from TCP connection\n\n")
 conn = GreenClientCreator(reactor).connectTCP('www.google.com', 80)
 conn.write('GET /not_found  HTTP/1.0\r\n\r\n')
 conn.loseWriteConnection()
-print(conn.read().decode('utf-8'))
+print(conn.read())
 
 print("\n\nRead from SSL connection line by line\n\n")
 

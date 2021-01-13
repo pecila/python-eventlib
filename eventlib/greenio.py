@@ -57,7 +57,7 @@ def higher_order_recv(recv_func):
                 raise
             except socket.error as e:
                 if e[0] == errno.EPIPE:
-                    _bytes = b''
+                    _bytes = ''
                 else:
                     raise
             else:
@@ -122,7 +122,7 @@ def socket_send(descriptor, data:bytes):
 SOCKET_CLOSED = (errno.ECONNRESET, errno.ENOTCONN, errno.ESHUTDOWN)
 def socket_recv(descriptor, buflen):
     try:
-        return descriptor.recv(buflen)
+        return descriptor.recv(buflen).decode('utf-8')
     except socket.error as e:
         if e.args[0] in BLOCKING_ERR:
             return None
@@ -189,7 +189,7 @@ class GreenSocket(object):
         self._fileno = fd.fileno()
         self.sendcount = 0
         self.recvcount = 0
-        self.recvbuffer = b''
+        self.recvbuffer = ''
         self.closed = False
         self.timeout = socket.getdefaulttimeout()
 
@@ -472,7 +472,7 @@ class GreenFile(object):
                 chunk, self.sock.recvbuffer = buf[:found], buf[found:]
                 return chunk
             checked = len(buf)
-            d = self.sock.recv(BUFFER_SIZE)
+            d = self.sock.recv(BUFFER_SIZE).encode('utf-8')
             if not d:
                 break
             buf += d

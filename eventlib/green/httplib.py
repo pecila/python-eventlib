@@ -1092,7 +1092,7 @@ class FakeSocket(SharedSocketClient):
     sendall = send
 
     def recv(self, len = 1024, flags = 0):
-        return self._ssl.read(len)
+        return self._ssl.read(len).decode('utf-8')
 
     def __getattr__(self, attr):
         return getattr(self._sock, attr)

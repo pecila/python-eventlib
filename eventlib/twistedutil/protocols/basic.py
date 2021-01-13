@@ -44,7 +44,7 @@ class LineOnlyReceiverTransport(GreenTransportBase):
     protocol_class = LineOnlyReceiver
 
     def readline(self):
-        return self._wait()
+        return self._wait().decode('utf-8')
 
     def sendline(self, line):
         self.protocol.sendLine(line)

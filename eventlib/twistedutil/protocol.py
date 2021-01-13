@@ -208,7 +208,7 @@ class UnbufferedTransport(GreenTransportBase):
         if self._disconnected_event.ready():
             return ''
         try:
-            return self._wait()
+            return self._wait().decode("utf-8")
         except ConnectionDone:
             return ''
 
@@ -242,7 +242,7 @@ class UnbufferedTransport(GreenTransportBase):
 class GreenTransport(GreenTransportBase):
 
     protocol_class = Protocol
-    _buffer = b'' 
+    _buffer = '' 
     _error = None
 
     def read(self, size=-1):
@@ -250,7 +250,7 @@ class GreenTransport(GreenTransportBase):
         if not self._disconnected_event.ready():
             try:
                 while len(self._buffer) < size or size < 0:
-                    self._buffer += self._wait()
+                    self._buffer += self._wait().decode('utf-8')
             except ConnectionDone:
                 pass
             except:
@@ -259,7 +259,7 @@ class GreenTransport(GreenTransportBase):
         if size>=0:
             result, self._buffer = self._buffer[:size], self._buffer[size:]
         else:
-            result, self._buffer = self._buffer, b''
+            result, self._buffer = self._buffer, ''
         if not result and self._disconnected_event.has_exception():
             try:
                 self._disconnected_event.wait()
@@ -273,7 +273,7 @@ class GreenTransport(GreenTransportBase):
             self.resumeProducing()
             try:
                 try:
-                    recvd = self._wait()
+                    recvd = self._wait().decode('utf-8')
                     #print 'received %r' % recvd
                     self._buffer += recvd
                 except ConnectionDone:
@@ -284,7 +284,7 @@ class GreenTransport(GreenTransportBase):
             finally:
                 self.pauseProducing()
         if buflen is None:
-            result, self._buffer = self._buffer, b''
+            result, self._buffer = self._buffer, ''
         else:
             result, self._buffer = self._buffer[:buflen], self._buffer[buflen:]
         if not result and self._disconnected_event.has_exception():

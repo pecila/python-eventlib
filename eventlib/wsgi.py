@@ -187,11 +187,11 @@ class HttpProtocol(BaseHTTPServer.BaseHTTPRequestHandler):
 
             if use_chunked:
                 ## Write the chunked encoding
-                towrite.append("%x\r\n%s\r\n" % (len(data), data))
+                towrite.append("%x\r\n%s\r\n" % len(data), data)
             else:
                 towrite.append(data)
             try:
-                _writelines(towrite)
+                _writelines(x.encode() for x in towrite)
                 length[0] = length[0] + sum(map(len, towrite))
             except UnicodeEncodeError:
                 print("Encountered unicode while attempting to write wsgi response: ", [x for x in towrite if isinstance(x, str)])

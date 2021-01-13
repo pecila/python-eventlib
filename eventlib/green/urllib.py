@@ -5,8 +5,8 @@ from eventlib.green import socket, time
 from urllib.error import( __all__ )
 from urllib.response import( __all__ )
 from urllib.robotparser import( __all__ )
-from urllib.request import( __all__, __version__, MAXFTPCACHE, ftpcache, ftpwrapper, _noheaders, noheaders, proxy_bypass )
-from urllib.parse import( __all__,  splithost, splituser, splittype, splitattr, splitpasswd, splitport, splitquery, splitvalue)
+from urllib.request import( __all__, __version__, MAXFTPCACHE, addinfourl, ftpcache, ftpwrapper, _noheaders, noheaders, proxy_bypass, url2pathname, getproxies )
+from urllib.parse import( __all__,  unwrap, unquote, quote, splithost, splituser, splittype, splitattr, splitpasswd, splitport, splitquery, splitvalue)
 from urllib.parse import urljoin as basejoin
 
 parse = urllib.parse.parse_qs

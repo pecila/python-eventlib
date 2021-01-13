@@ -1,19 +1,19 @@
-urllib2 = __import__('urllib2')
-for var in dir(urllib2):
-    exec("%s = urllib2.%s" % (var, var))
+urllib3 = __import__('urllib3')
+for var in dir(urllib3):
+    exec("%s = urllib3.%s" % (var, var))
 
 # import the following to be a better drop-in replacement
 __import_lst = ['__version__', '__cut_port_re', '_parse_proxy']
 
 for var in __import_lst:
-    exec("%s = getattr(urllib2, %r, None)" % (var, var))
+    exec("%s = getattr(urllib3, %r, None)" % (var, var))
 
 for x in ('urlopen', 'install_opener', 'build_opener', 'HTTPHandler', 'HTTPSHandler',
           'HTTPCookieProcessor', 'FileHandler', 'FTPHandler', 'CacheFTPHandler', 'GopherError'):
     globals().pop(x, None)
 
 from eventlib.green import httplib
-import mimetools
+from email import message_from_string as Message
 import os
 from eventlib.green import socket
 import sys
@@ -23,6 +23,8 @@ try:
     from io import StringIO
 except ImportError:
     from io import StringIO
+
+import urllib.request
 
 from eventlib.green.urllib import (unwrap, unquote, splittype, splithost, quote,
      addinfourl, splitport, splitquery,
@@ -78,9 +80,9 @@ class HTTPHandler(urllib.request.HTTPHandler):
     def http_open(self, req):
         return self.do_open(httplib.HTTPConnection, req)
 
-    http_request = AbstractHTTPHandler.do_request_
+    http_request = urllib.request.AbstractHTTPHandler.do_request_
 
-if hasattr(urllib2, 'HTTPSHandler'):
+if hasattr(urllib3, 'HTTPSHandler'):
     class HTTPSHandler(urllib.request.HTTPSHandler):
 
         def https_open(self, req):
@@ -116,7 +118,7 @@ class FileHandler(urllib.request.FileHandler):
         size = stats.st_size
         modified = email.Utils.formatdate(stats.st_mtime, usegmt=True)
         mtype = mimetypes.guess_type(file)[0]
-        headers = mimetools.Message(StringIO(
+        headers = Message(StringIO(
             'Content-type: %s\nContent-length: %d\nLast-modified: %s\n' %
             (mtype or 'text/plain', size, modified)))
         if host:
@@ -176,7 +178,7 @@ class FTPHandler(urllib.request.FTPHandler):
             if retrlen is not None and retrlen >= 0:
                 headers += "Content-length: %d\n" % retrlen
             sf = StringIO(headers)
-            headers = mimetools.Message(sf)
+            headers = Message(sf)
             return addinfourl(fp, headers, req.get_full_url())
         except ftplib.all_errors as msg:
             raise IOError('ftp error', msg).with_traceback(sys.exc_info()[2])
@@ -232,7 +234,7 @@ class CacheFTPHandler(FTPHandler):
                     break
             self.soonest = min(self.timeout.values())
 
-class GopherHandler(BaseHandler):
+class GopherHandler(urllib.request.BaseHandler):
     def gopher_open(self, req):
         # XXX can raise socket.error
         from eventlib.green import gopherlib  # this raises DeprecationWarning in 2.5
